@@ -1,0 +1,107 @@
+<html>
+    <head>
+        <style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+    }    
+   
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script>
+
+$(document).ready(function(){
+    console.log("Hello.");
+    $("#btn").click(function(){
+
+        function gcd_two_numbers(x, y) {
+            if ((typeof x !== 'number') || (typeof y !== 'number')) 
+                return false;
+            x = Math.abs(x);
+            y = Math.abs(y);
+            while(y) {
+                var t = y;
+                y = x % y;
+                x = t;
+            }
+            return x;
+        }
+
+        function policz(value) {
+            const startNawias =  value.indexOf('(');
+            const endNawias =  value.indexOf(')');
+            const kropka = value.indexOf('.');
+
+
+            const p1 = value.substring(0,startNawias);
+            const dodatkowychZer =  startNawias - kropka-1;
+            const wNawiasie =  endNawias- startNawias-1;
+
+            const wOkresie = value.substring(startNawias, endNawias+1);
+            const wOkresieLiczba = value.substring(startNawias+1, endNawias);
+
+            let mianownik = 9;
+            for (let i = 1; i < wNawiasie; i++) {
+                mianownik = mianownik *10 + 9;               
+            }
+            for (let i = 0; i < dodatkowychZer; i++) 
+                mianownik *=10;
+            let tysiac = 1;
+            for (let i = 0; i < dodatkowychZer+wNawiasie; i++) 
+                tysiac *=10;
+
+            const other = tysiac-mianownik;
+
+
+            const p2 = p1 * other;
+
+            let linia = '<p>Wynik</p>';
+            linia += "<p>x=" + value+"</p>";
+            if (other != 1) {
+                linia += "<p>"+other+"*x=" + p2+"." + wOkresie+"</p>";
+            }
+            let uuu = p1 * tysiac + parseInt(wOkresieLiczba);
+            linia += "<p>"+tysiac+"*x=" + uuu+"." + wOkresie+"</p>";
+            //
+            let www = 1;
+            linia += "<p>"+mianownik+"*x=" + uuu+ "</p>";
+
+            let licznik_nieuproszczony = uuu-p2;
+            linia += "<p>x = <sup>"+licznik_nieuproszczony+"</sup>/<sub>"+mianownik+"</sub></p>";
+            const calkowita =  Math.trunc(licznik_nieuproszczony/mianownik);
+            
+            let licznik = licznik_nieuproszczony - mianownik*calkowita;
+             
+            if (calkowita != 0) {
+                // const licznik = licznik_nieuproszczony - mianownik*calkowita;
+                linia += "<p>x = "+calkowita+" <sup>"+licznik+"</sup>/<sub>"+mianownik+"</sub></p>";
+            }
+            let podzielnik = gcd_two_numbers(licznik, mianownik);
+            if (podzielnik != 1) {
+                licznik /= podzielnik;
+                mianownik /= podzielnik;
+                linia += "<p>x = "+calkowita+" <sup>"+licznik+"</sup>/<sub>"+mianownik+"</sub></p>";
+            }
+            return linia;
+        }
+
+        const value = $("#decimalFraction").first().val();
+        const wynik = policz(value);
+        $("#output").html(wynik);
+        // console.log(wynik);
+  });
+
+});
+
+        </script>
+    </head>
+    <body>
+        <h3>Zamiana ułamków dziesiętnych okresowych na ułamki zwykłe</h3>
+        <div>
+            <span>ułamek dziesiętny</span>
+            <input type="text" id="decimalFraction" value="1.2(13)">
+            <button id="btn" >Zamień</button>
+            <br/>
+            <div id="output"></p>
+        </div>
+    </body>
+</html>
