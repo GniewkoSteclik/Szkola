@@ -9,83 +9,150 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
     <script>
 
+function gcd_two_numbers(x, y) {
+    if ((typeof x !== 'number') || (typeof y !== 'number'))
+        return false;
+    x = Math.abs(x);
+    y = Math.abs(y);
+    while (y) {
+        var t = y;
+        y = x % y;
+        x = t;
+    }
+    return x;
+}
+function parse_decimal_number(text) {
+    text = text.trim();
+    var isMinus = text.substring(0, 1) == '-';
+    if (isMinus)
+        text = text.substring(1).trim();
+    var startNawias = text.indexOf('(');
+    var endNawias = text.indexOf(')');
+    if (startNawias >= 0 || endNawias >= 0) {
+        if (endNawias < 0)
+            return "Brak nawiasu zamykającego";
+        if (startNawias < 0)
+            return "Brak nawiasu otwierającego a jest nawias zamykający";
+        var len = endNawias - startNawias;
+        if (len < 0)
+            return "Zła kolejność nawiasów";
+    }
+    var wOkresieLiczba = text.substring(startNawias + 1, endNawias).trim();
+    var kropka = text.indexOf('.');
+    if (wOkresieLiczba.length > 0) {
+        if (kropka < 0 || kropka > startNawias)
+            return "Część okresowa liczby dziesiętnej może być tylko po kropce";
+        if (wOkresieLiczba.length > 0) {
+            var regexp = new RegExp('^\\d+$');
+            if (!regexp.test(wOkresieLiczba))
+                return "Tekst w nawiasie nie jest liczbą";
+        }
+    }
+    var nonPeriodic = startNawias >= 0 ? text.substring(0, startNawias) : text;
+    var regexp2 = new RegExp('^\\d+(\\.\\d*)?$');
+    if (!regexp2.test(nonPeriodic))
+        return "Tekst '" + nonPeriodic + "' nie jest prawidłową liczbą dziesiętną";
+    var wOkresie = text.substring(startNawias, endNawias + 1);
+    return { Value: parseFloat(nonPeriodic), PeriodicDigits: wOkresieLiczba, IsMinus: isMinus };
+}
+function reduce_by(x, by) {
+    return { IntegerPart: x.IntegerPart, Counter: x.Counter / by, Denominator: x.Denominator / by, IsMinus: x.IsMinus };
+}
+function format(x) {
+    var a = x.IsMinus ? "-" : "";
+    a += x.Value;
+    if (x.PeriodicDigits.length == 0)
+        return a;
+    if (a.indexOf('.') < 0)
+        a += ".";
+    a += "(" + x.PeriodicDigits + ")";
+    a = '<span style="font-family: Courier New, Mono;">' + a + "</span>";
+    return a;
+}
+function format_minus(x) {
+    var r = format(x);
+    if (x.IsMinus)
+        return "(" + r + ")";
+    return r;
+}
+function format_fraction(x) {
+    var a = x.IsMinus ? "-" : "";
+    if (x.IntegerPart != 0)
+        a += x.IntegerPart;
+    a += "<sup>" + x.Counter + "</sup>/<sub>" + x.Denominator + "</sub>";
+    a = '<span style="font-family: Courier New, Mono;">' + a + "</span>";
+    return a;
+}
+function times(text, times) {
+    return times != 1 ? times + "*" + text : text;
+}
+function power10(x) {
+    var value = 1;
+    for (var i = 0; i < x; i++)
+        value *= 10;
+    return value;
+}
+function with_value(x, value) {
+    return { Value: value, PeriodicDigits: x.PeriodicDigits, IsMinus: x.IsMinus };
+}
+function solveNumber(x) {
+    var valueStr = x.Value.toString();
+    var kropka = valueStr.indexOf('.');
+    var additionalZeros = kropka >= 0 ? valueStr.length - kropka - 1 : 0;
+    var separator = "</br>\r\n";
+    var result = "x = " + format(x);
+    var periodicDigitsLen = x.PeriodicDigits.length;
+    var frac1;
+    if (periodicDigitsLen == 0) {
+        if (additionalZeros == 0 || kropka < 0)
+            return result + "</br>\r\n jest to całkowita i nie wymaga zamiany na ułamek zwykły";
+        var pow = power10(additionalZeros);
+        frac1 = { IntegerPart: parseInt(valueStr.substring(0, kropka)), Counter: parseInt(valueStr.substring(kropka + 1)), Denominator: pow, IsMinus: x.IsMinus };
+        result += separator + "  liczbę bez części okresowej możemy zapisać jako ułamek";
+        result += separator + format_fraction(frac1);
+    }
+    else {
+        var p1 = power10(additionalZeros);
+        var p2 = power10(periodicDigitsLen + additionalZeros);
+        //const periodic = parseInt(x.PeriodicDigits);
+        var val2 = with_value(x, x.Value * p2 + parseInt(x.PeriodicDigits));
+        result += separator + p2 + "*x = " + format(val2);
+        var val1 = with_value(x, x.Value * p1);
+        if (p1 > 1)
+            result += separator + p1 + "*x = " + format(val1);
+        result += separator + p2 + "*x - " + times("x", p1) +  " = " + format(val2) + " - " + format_minus(val1);
+        var p3 = p2 - p1;
+        var reducedValue = val2.Value - val1.Value;
+        result += separator + p3 + "*x = " + reducedValue;
+        frac1 = { IntegerPart: 0, Counter: reducedValue, Denominator: p3, IsMinus: x.IsMinus };
+        result += separator + "x = " + format_fraction(frac1);
+        if (frac1.Counter >= frac1.Denominator) {
+            frac1.IntegerPart = Math.floor(frac1.Counter / frac1.Denominator);
+            frac1.Counter -= frac1.IntegerPart * frac1.Denominator;
+            result += separator + "Wydzielamy część całkowitą";
+            result += separator + "x = " + format_fraction(frac1);
+        }
+    }
+    var div = gcd_two_numbers(frac1.Counter, frac1.Denominator);
+    if (div > 1) {
+        result += separator + " Ułamek można skrócić przez " + div + " otrzymując";
+        frac1 = reduce_by(frac1, div);
+        result += separator + "x = " + format_fraction(frac1);
+    }
+    return result;
+}
+function solve(x) {
+    var value = parse_decimal_number(x);
+    if (typeof (value) == "string")
+        return value;
+    return solveNumber(value);
+}        
+
 $(document).ready(function(){
     console.log("Hello.");
     $("#btn").click(function(){
-
-        function gcd_two_numbers(x, y) {
-            if ((typeof x !== 'number') || (typeof y !== 'number')) 
-                return false;
-            x = Math.abs(x);
-            y = Math.abs(y);
-            while(y) {
-                var t = y;
-                y = x % y;
-                x = t;
-            }
-            return x;
-        }
-
-        function policz(value) {
-            const startNawias =  value.indexOf('(');
-            const endNawias =  value.indexOf(')');
-            const kropka = value.indexOf('.');
-
-
-            const p1 = value.substring(0,startNawias);
-            const dodatkowychZer =  startNawias - kropka-1;
-            const wNawiasie =  endNawias- startNawias-1;
-
-            const wOkresie = value.substring(startNawias, endNawias+1);
-            const wOkresieLiczba = value.substring(startNawias+1, endNawias);
-
-            let mianownik = 9;
-            for (let i = 1; i < wNawiasie; i++) {
-                mianownik = mianownik *10 + 9;               
-            }
-            for (let i = 0; i < dodatkowychZer; i++) 
-                mianownik *=10;
-            let tysiac = 1;
-            for (let i = 0; i < dodatkowychZer+wNawiasie; i++) 
-                tysiac *=10;
-
-            const other = tysiac-mianownik;
-
-
-            const p2 = p1 * other;
-
-            let linia = '<p>Wynik</p>';
-            linia += "<p>x=" + value+"</p>";
-            if (other != 1) {
-                linia += "<p>"+other+"*x=" + p2+"." + wOkresie+"</p>";
-            }
-            let uuu = p1 * tysiac + parseInt(wOkresieLiczba);
-            linia += "<p>"+tysiac+"*x=" + uuu+"." + wOkresie+"</p>";
-            //
-            let www = 1;
-            linia += "<p>"+mianownik+"*x=" + uuu+ "</p>";
-
-            let licznik_nieuproszczony = uuu-p2;
-            linia += "<p>x = <sup>"+licznik_nieuproszczony+"</sup>/<sub>"+mianownik+"</sub></p>";
-            const calkowita =  Math.trunc(licznik_nieuproszczony/mianownik);
-            
-            let licznik = licznik_nieuproszczony - mianownik*calkowita;
-             
-            if (calkowita != 0) {
-                // const licznik = licznik_nieuproszczony - mianownik*calkowita;
-                linia += "<p>x = "+calkowita+" <sup>"+licznik+"</sup>/<sub>"+mianownik+"</sub></p>";
-            }
-            let podzielnik = gcd_two_numbers(licznik, mianownik);
-            if (podzielnik != 1) {
-                licznik /= podzielnik;
-                mianownik /= podzielnik;
-                linia += "<p>x = "+calkowita+" <sup>"+licznik+"</sup>/<sub>"+mianownik+"</sub></p>";
-            }
-            return linia;
-        }
-
         const value = $("#decimalFraction").first().val();
-        const wynik = policz(value);
+        const wynik = solve(value);
         $("#output").html(wynik);
         // console.log(wynik);
   });
